@@ -1,0 +1,53 @@
+name: Cirrus
+options:
+  bundleIdPrefix: com.sane
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.3"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+
+targets:
+  Cirrus:
+    type: application
+    platform: macOS
+    sources:
+      - path: Cirrus
+        excludes:
+          - "**/.DS_Store"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sane.cirrus
+        INFOPLIST_FILE: Cirrus/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Cirrus/Cirrus.entitlements
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_LSUIElement: true
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    entitlements:
+      path: Cirrus/Cirrus.entitlements
+
+  CirrusTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: CirrusTests
+        excludes:
+          - "**/.DS_Store"
+    dependencies:
+      - target: Cirrus
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sane.cirrus.tests
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: true
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Cirrus.app/Contents/MacOS/Cirrus"
+        BUNDLE_LOADER: "$(TEST_HOST)"
