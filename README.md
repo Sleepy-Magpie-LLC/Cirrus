@@ -25,7 +25,7 @@ Cirrus wraps rclone's CLI in a two-surface interface:
 
 ### Key Features
 
-- **Profile management** — Configure source folder, destination remote, rclone action (sync/copy/move/delete), ignore patterns, and extra flags per profile
+- **Profile management** — Configure source and destination endpoints (local path or remote), rclone action (sync/copy/move/bisync/delete), ignore patterns, and extra flags per profile
 - **Paste-to-create** — Paste an rclone command like `rclone sync ~/docs gdrive:backup --exclude "*.tmp"` and the parser auto-populates all form fields
 - **Cron scheduling** — Visual builder or raw cron expression input. Jobs fire automatically while the app is running
 - **Live log streaming** — Watch rclone output in real-time for running jobs
@@ -40,6 +40,7 @@ Cirrus wraps rclone's CLI in a two-surface interface:
 | `sync` | Make destination identical to source, deleting extra files on destination |
 | `copy` | Copy files from source to destination without deleting anything |
 | `move` | Move files from source to destination (deletes from source after transfer) |
+| `bisync` | Bidirectional sync — keeps both source and destination in sync (auto-adds `--resync` on first run) |
 | `delete` | Delete files on the remote matching the configured path |
 
 ## Requirements
@@ -194,16 +195,30 @@ Cirrus/
 ├── Cirrus/
 │   ├── CirrusApp.swift        # App entry point, dependency wiring
 │   ├── AppDelegate.swift      # NSStatusItem, tray popup, quit handling
-│   ├── Models/                # Profile, CronSchedule, JobRun, LogEntry, JobStatus
+│   ├── Models/                # Profile, Endpoint, CronSchedule, JobRun, LogEntry, JobStatus, AppSettingsModel
 │   ├── Stores/                # AppSettings, ProfileStore, JobManager, LogStore, ScheduleManager
 │   ├── Services/              # RcloneService, RcloneCommandParser, FilterFileWriter
-│   ├── Utilities/             # CronParser, AtomicFileWriter, CirrusError, NetworkMonitor, JSONCoders
+│   ├── Utilities/             # CronParser, AtomicFileWriter, CirrusError, NetworkMonitor, JSONCoders, String+ANSI
 │   └── Views/
 │       ├── TrayPopup/         # TrayPopupPanel, TrayPopupView, TrayPopupState, PopupProfileRow, PopupEmptyState
-│       ├── MainWindow/        # MainWindowView, Profiles/, History/, Settings/
+│       ├── MainWindow/
+│       │   ├── MainWindowView
+│       │   ├── Profiles/      # ProfileListView, ProfileFormView, EndpointFormSection, ActionSelectorView, PasteCommandView
+│       │   ├── History/       # HistoryTabView, HistoryRunRow, LiveLogView, LogViewerSheet
+│       │   └── Settings/      # SettingsTabView
 │       └── Components/        # StatusBadge, CronBuilderView, GUIProfileRow
 └── CirrusTests/               # Mirror of source structure with Swift Testing tests
 ```
+
+## CI/CD
+
+A GitHub Actions workflow (`.github/workflows/release.yml`) handles releases via manual dispatch:
+
+1. Takes a semver version number as input (and optional build number)
+2. Updates `project.yml` with the new version/build
+3. Generates the Xcode project, builds a Release binary
+4. Packages `Cirrus.app` into a zip archive
+5. Commits the version bump, creates a git tag, and publishes a GitHub Release with the zip attached
 
 ## License
 
