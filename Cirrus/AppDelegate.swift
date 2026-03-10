@@ -217,9 +217,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            let isMainWindow = (notification.object as? NSWindow)?.identifier?.rawValue == "main"
+            nonisolated(unsafe) let notif = notification
             MainActor.assumeIsolated {
-                guard isMainWindow else { return }
+                guard let window = notif.object as? NSWindow,
+                      window.identifier?.rawValue == "main" else { return }
                 self?.windowCloseObserver.flatMap { NotificationCenter.default.removeObserver($0) }
                 self?.windowCloseObserver = nil
                 NSApp.setActivationPolicy(.accessory)
