@@ -217,11 +217,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            guard let window = notification.object as? NSWindow,
-                  window.identifier?.rawValue == "main" else { return }
-            self?.windowCloseObserver.flatMap { NotificationCenter.default.removeObserver($0) }
-            self?.windowCloseObserver = nil
-            NSApp.setActivationPolicy(.accessory)
+            let isMainWindow = (notification.object as? NSWindow)?.identifier?.rawValue == "main"
+            MainActor.assumeIsolated {
+                guard isMainWindow else { return }
+                self?.windowCloseObserver.flatMap { NotificationCenter.default.removeObserver($0) }
+                self?.windowCloseObserver = nil
+                NSApp.setActivationPolicy(.accessory)
+            }
         }
     }
 

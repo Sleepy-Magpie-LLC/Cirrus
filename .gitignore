@@ -31,3 +31,5 @@ playground.xcworkspace
 
 # XcodeGen (regenerated from project.yml)
 *.xcodeproj/project.pbxproj
+
+.logclaude
