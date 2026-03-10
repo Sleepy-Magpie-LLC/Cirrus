@@ -2,6 +2,16 @@
 
 A native macOS menu bar application for managing [rclone](https://rclone.org/) file synchronization jobs through reusable profiles. Replace your hand-written shell scripts with a GUI-driven workflow for configuring, executing, scheduling, and monitoring rclone operations across any supported remote.
 
+## Screenshots
+
+| Tray Popup | Profiles |
+|:---:|:---:|
+| ![Tray popup showing profiles with status badges and last run times](screenshots/Screenshot%201.png) | ![Main window Profiles tab with sync configurations](screenshots/Screenshot2.png) |
+
+| History | Log Viewer |
+|:---:|:---:|
+| ![History tab with per-profile run history and status filters](screenshots/Screenshot%203.png) | ![Log viewer with syntax-highlighted rclone output](screenshots/Screenshot%204.png) |
+
 ## What It Does
 
 Cirrus wraps rclone's CLI in a two-surface interface:
