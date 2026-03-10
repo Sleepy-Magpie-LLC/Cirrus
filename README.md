@@ -12,6 +12,10 @@ A native macOS menu bar application for managing [rclone](https://rclone.org/) f
 |:---:|:---:|
 | ![History tab with per-profile run history and status filters](screenshots/Screenshot%203.png) | ![Log viewer with syntax-highlighted rclone output](screenshots/Screenshot%204.png) |
 
+| Profile Editor |
+|:---:|
+| ![Profile editor with source, destination, action, and ignore pattern configuration](screenshots/Screenshot%205.png) |
+
 ## What It Does
 
 Cirrus wraps rclone's CLI in a two-surface interface:

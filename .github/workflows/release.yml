@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number (e.g. 1.2.0)"
+        required: true
+        type: string
+      bump_build:
+        description: "Build number (auto-increments from last if empty)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Release
+    runs-on: macos-15
+    env:
+      VERSION: ${{ inputs.version }}
+      BUMP_BUILD: ${{ inputs.bump_build }}
+    steps:
+      - name: Validate version format
+        run: |
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version must be in semver format (e.g. 1.2.0)"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 16.3
+        run: sudo xcode-select -s /Applications/Xcode_16.3.app/Contents/Developer
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Determine build number
+        id: buildnum
+        run: |
+          if [ -n "$BUMP_BUILD" ]; then
+            echo "build=$BUMP_BUILD" >> "$GITHUB_OUTPUT"
+          else
+            CURRENT=$(grep 'CURRENT_PROJECT_VERSION:' project.yml | head -1 | sed 's/.*"\(.*\)"/\1/')
+            NEXT=$((CURRENT + 1))
+            echo "build=$NEXT" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update version in project.yml
+        env:
+          BUILD_NUMBER: ${{ steps.buildnum.outputs.build }}
+        run: |
+          sed -i '' "s/MARKETING_VERSION: \".*\"/MARKETING_VERSION: \"$VERSION\"/" project.yml
+          sed -i '' "s/CURRENT_PROJECT_VERSION: \".*\"/CURRENT_PROJECT_VERSION: \"$BUILD_NUMBER\"/" project.yml
+          echo "Updated to version $VERSION (build $BUILD_NUMBER)"
+          grep -E 'MARKETING_VERSION|CURRENT_PROJECT_VERSION' project.yml
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build release binary
+        run: |
+          xcodebuild \
+            -project Cirrus.xcodeproj \
+            -scheme Cirrus \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="" \
+            build
+
+      - name: Package app into zip
+        run: |
+          APP_PATH="build/Build/Products/Release/Cirrus.app"
+          ditto -c -k --keepParent "$APP_PATH" "Cirrus-${VERSION}.zip"
+
+      - name: Commit version bump
+        env:
+          BUILD_NUMBER: ${{ steps.buildnum.outputs.build }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add project.yml
+          git commit -m "Bump version to ${VERSION} (build ${BUILD_NUMBER})"
+          git push
+
+      - name: Create tag
+        run: |
+          git tag "v${VERSION}"
+          git push origin "v${VERSION}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ inputs.version }}"
+          name: "Cirrus v${{ inputs.version }}"
+          generate_release_notes: true
+          files: "Cirrus-${{ inputs.version }}.zip"
