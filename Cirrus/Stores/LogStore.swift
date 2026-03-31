@@ -111,6 +111,42 @@ final class LogStore {
             .status
     }
 
+    func pruneExpiredLogs(profiles: [Profile]) {
+        let now = Date()
+        var entriesToRemove: Set<UUID> = []
+
+        let retentionByProfile = Dictionary(uniqueKeysWithValues:
+            profiles.compactMap { p -> (UUID, Int)? in
+                guard let days = p.logRetentionDays else { return nil }
+                return (p.id, days)
+            }
+        )
+
+        for entry in entries {
+            guard let retentionDays = retentionByProfile[entry.profileId] else { continue }
+            guard entry.status != .running else { continue }
+            let cutoff = now.addingTimeInterval(-Double(retentionDays) * 86400)
+            if entry.startedAt < cutoff {
+                let fileURL = logFileURL(for: entry.logFileName)
+                do {
+                    try fileManager.removeItem(at: fileURL)
+                    entriesToRemove.insert(entry.id)
+                } catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileNoSuchFileError {
+                    // File already gone — safe to remove from index
+                    entriesToRemove.insert(entry.id)
+                } catch {
+                    Self.logger.warning("Failed to remove log file \(entry.logFileName): \(error.localizedDescription)")
+                }
+            }
+        }
+
+        if !entriesToRemove.isEmpty {
+            entries.removeAll { entriesToRemove.contains($0.id) }
+            try? saveIndex()
+            Self.logger.info("Pruned \(entriesToRemove.count) expired log entries")
+        }
+    }
+
     func readLogFile(fileName: String) -> String {
         let url = logFileURL(for: fileName)
         return (try? String(contentsOf: url, encoding: .utf8))?.strippingANSICodes() ?? "Log file not found."

@@ -1,5 +1,10 @@
 import SwiftUI
 
+struct IgnorePattern: Identifiable {
+    let id = UUID()
+    var value: String
+}
+
 struct ProfileFormView: View {
     @Environment(AppSettings.self) private var appSettings
     @Environment(ProfileStore.self) private var profileStore
@@ -11,12 +16,15 @@ struct ProfileFormView: View {
     @State private var source: Endpoint = .empty
     @State private var destination: Endpoint = .empty
     @State private var action: RcloneAction = .sync
-    @State private var ignorePatterns: [String] = []
+    @State private var ignorePatterns: [IgnorePattern] = []
     @State private var extraFlags = ""
     @State private var discoveredRemotes: [String] = []
     @State private var saveError: String?
     @State private var creationMode: CreationMode = .manual
     @State private var showCommandPreview = false
+    @State private var showIgnorePatterns = false
+    @State private var logRetentionDays: Int? = nil
+    @State private var logRetentionEnabled = false
     @State private var dryRunOutput: String?
     @State private var isDryRunning = false
     @State private var scheduleEnabled = false
@@ -58,6 +66,9 @@ struct ProfileFormView: View {
                     }
 
                     nameSection
+
+                    // --- Sync Configuration ---
+                    sectionHeader("Sync Configuration")
                     EndpointFormSection(
                         title: "Source",
                         endpoint: $source,
@@ -81,10 +92,20 @@ struct ProfileFormView: View {
                     .padding(.horizontal, 4)
 
                     actionSection
-                    ignorePatternsSection
+
+                    // --- Command Options ---
+                    sectionHeader("Command Options")
                     flagsSection
                     commandPreviewSection
+                    ignorePatternsSection
+
+                    // --- Scheduling & Maintenance ---
+                    sectionHeader("Scheduling & Maintenance")
                     scheduleSection
+                    logRetentionSection
+
+                    // --- Testing ---
+                    sectionHeader("Testing")
                     dryRunSection
                 }
                 .padding()
@@ -131,6 +152,18 @@ struct ProfileFormView: View {
 
     // MARK: - Sections
 
+    private func sectionHeader(_ title: String) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Rectangle()
+                .fill(.separator)
+                .frame(height: 1)
+        }
+        .padding(.top, 8)
+    }
+
     private var nameSection: some View {
         GroupBox("Name") {
             TextField("", text: $name, prompt: Text("Profile Name"))
@@ -145,24 +178,46 @@ struct ProfileFormView: View {
     }
 
     private var ignorePatternsSection: some View {
-        GroupBox("Ignore Patterns") {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(ignorePatterns.indices, id: \.self) { index in
-                    HStack {
-                        TextField("", text: $ignorePatterns[index], prompt: Text("Pattern"))
-                            .textFieldStyle(.roundedBorder)
-                        Button(role: .destructive) {
-                            ignorePatterns.remove(at: index)
-                        } label: {
-                            Image(systemName: "minus.circle")
-                        }
-                        .buttonStyle(.borderless)
-                    }
-                }
+        GroupBox {
+            VStack(alignment: .leading, spacing: 0) {
                 Button {
-                    ignorePatterns.append("")
+                    withAnimation { showIgnorePatterns.toggle() }
                 } label: {
-                    Label("Add Pattern", systemImage: "plus")
+                    HStack(spacing: 4) {
+                        Image(systemName: showIgnorePatterns ? "chevron.down" : "chevron.right")
+                            .font(.caption2)
+                            .frame(width: 10)
+                        Text("Ignore Patterns")
+                        if !ignorePatterns.filter({ !$0.value.isEmpty }).isEmpty {
+                            Text("(\(ignorePatterns.filter { !$0.value.isEmpty }.count))")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if showIgnorePatterns {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach($ignorePatterns) { $pattern in
+                            HStack {
+                                TextField("", text: $pattern.value, prompt: Text("Pattern"))
+                                    .textFieldStyle(.roundedBorder)
+                                Button(role: .destructive) {
+                                    ignorePatterns.removeAll { $0.id == pattern.id }
+                                } label: {
+                                    Image(systemName: "minus.circle")
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                        }
+                        Button {
+                            ignorePatterns.append(IgnorePattern(value: ""))
+                        } label: {
+                            Label("Add Pattern", systemImage: "plus")
+                        }
+                    }
+                    .padding(.top, 8)
                 }
             }
         }
@@ -197,7 +252,7 @@ struct ProfileFormView: View {
                         action: action,
                         source: source,
                         destination: destination,
-                        ignorePatterns: ignorePatterns,
+                        ignorePatterns: ignorePatterns.map(\.value),
                         extraFlags: extraFlags
                     )
                     HStack(alignment: .top) {
@@ -232,6 +287,38 @@ struct ProfileFormView: View {
 
                 if scheduleEnabled {
                     CronBuilderView(schedule: $schedule)
+                }
+            }
+        }
+    }
+
+    private var logRetentionSection: some View {
+        GroupBox("Log Retention") {
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle("Automatically prune old logs", isOn: $logRetentionEnabled)
+                    .onChange(of: logRetentionEnabled) {
+                        if !logRetentionEnabled {
+                            logRetentionDays = nil
+                        } else if logRetentionDays == nil {
+                            logRetentionDays = 30
+                        }
+                    }
+
+                if logRetentionEnabled {
+                    HStack {
+                        Text("Keep logs for")
+                        TextField(
+                            "",
+                            value: Binding(
+                                get: { logRetentionDays ?? 30 },
+                                set: { logRetentionDays = max(1, min(365, $0)) }
+                            ),
+                            format: .number
+                        )
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 60)
+                        Text("days")
+                    }
                 }
             }
         }
@@ -304,7 +391,7 @@ struct ProfileFormView: View {
         if let parsed = result.action { action = parsed }
         if let src = result.source { source = src }
         if let dst = result.destination { destination = dst }
-        if !result.ignorePatterns.isEmpty { ignorePatterns = result.ignorePatterns }
+        if !result.ignorePatterns.isEmpty { ignorePatterns = result.ignorePatterns.map { IgnorePattern(value: $0) } }
         if !result.extraFlags.isEmpty { extraFlags = result.extraFlags }
     }
 
@@ -316,7 +403,7 @@ struct ProfileFormView: View {
         let currentAction = action
         let currentSource = source
         let currentDest = destination
-        let currentPatterns = ignorePatterns.filter { !$0.isEmpty }
+        let currentPatterns = ignorePatterns.map(\.value).filter { !$0.isEmpty }
         let currentFlags = extraFlags
 
         Task.detached {
@@ -357,10 +444,12 @@ struct ProfileFormView: View {
         source = profile.source
         destination = profile.destination
         action = profile.action
-        ignorePatterns = profile.ignorePatterns
+        ignorePatterns = profile.ignorePatterns.map { IgnorePattern(value: $0) }
         extraFlags = profile.extraFlags
         schedule = profile.schedule
         scheduleEnabled = profile.schedule?.enabled == true
+        logRetentionDays = profile.logRetentionDays
+        logRetentionEnabled = profile.logRetentionDays != nil
     }
 
     private func deleteProfile() {
@@ -374,7 +463,7 @@ struct ProfileFormView: View {
     }
 
     private func saveProfile() {
-        let filteredPatterns = ignorePatterns.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let filteredPatterns = ignorePatterns.map(\.value).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
 
         let trimmedSource = Endpoint(
             remoteName: source.remoteName.trimmingCharacters(in: .whitespaces),
@@ -396,6 +485,7 @@ struct ProfileFormView: View {
                 ignorePatterns: filteredPatterns,
                 extraFlags: extraFlags,
                 schedule: scheduleEnabled ? schedule : nil,
+                logRetentionDays: logRetentionEnabled ? logRetentionDays : nil,
                 groupName: existing.groupName,
                 sortOrder: existing.sortOrder,
                 createdAt: existing.createdAt
@@ -408,7 +498,8 @@ struct ProfileFormView: View {
                 action: action,
                 ignorePatterns: filteredPatterns,
                 extraFlags: extraFlags,
-                schedule: scheduleEnabled ? schedule : nil
+                schedule: scheduleEnabled ? schedule : nil,
+                logRetentionDays: logRetentionEnabled ? logRetentionDays : nil
             )
         }
 

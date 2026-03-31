@@ -6,15 +6,18 @@ final class ScheduleManager {
     private var evaluationTask: Task<Void, Never>?
     private(set) var lastFireDates: [UUID: Date] = [:]
     private var failedProfiles: Set<UUID> = []
+    private var lastPruneDate: Date?
     private let profileStore: ProfileStore
     private let jobManager: JobManager
+    private let logStore: LogStore
     private let configDirectoryURL: () -> URL
 
     private static let logger = Logger(subsystem: "com.sane.cirrus", category: "ScheduleManager")
 
-    init(profileStore: ProfileStore, jobManager: JobManager, configDirectoryURL: @escaping () -> URL) {
+    init(profileStore: ProfileStore, jobManager: JobManager, logStore: LogStore, configDirectoryURL: @escaping () -> URL) {
         self.profileStore = profileStore
         self.jobManager = jobManager
+        self.logStore = logStore
         self.configDirectoryURL = configDirectoryURL
     }
 
@@ -36,6 +39,12 @@ final class ScheduleManager {
 
     private func evaluateSchedules() {
         let now = Date()
+
+        if lastPruneDate == nil || now.timeIntervalSince(lastPruneDate!) > 86400 {
+            logStore.pruneExpiredLogs(profiles: profileStore.profiles)
+            lastPruneDate = now
+        }
+
         for profile in profileStore.profiles {
             guard let schedule = profile.schedule, schedule.enabled else { continue }
             guard !jobManager.isRunning(for: profile.id) else { continue }

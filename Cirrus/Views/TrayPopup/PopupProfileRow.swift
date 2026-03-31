@@ -11,26 +11,28 @@ struct PopupProfileRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            StatusBadge(status: jobStatus)
+            HStack(spacing: 8) {
+                StatusBadge(status: jobStatus)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(profile.name)
-                    .font(.system(.body, weight: .medium))
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(profile.name)
+                        .font(.system(.body, weight: .medium))
+                        .lineLimit(1)
 
-                metadataView
+                    metadataView
+                }
+
+                Spacer()
             }
-
-            Spacer()
+            .contentShape(Rectangle())
+            .onTapGesture {
+                onHistory()
+            }
 
             actionButtons
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 8)
-        .contentShape(Rectangle())
-        .onTapGesture(count: 2) {
-            onHistory()
-        }
     }
 
     @ViewBuilder

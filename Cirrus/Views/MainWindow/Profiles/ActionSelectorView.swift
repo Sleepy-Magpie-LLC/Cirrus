@@ -25,6 +25,16 @@ struct ActionSelectorView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            if selectedAction == .bisync {
+                Label {
+                    Text("If you find jobs are consistently failing, add `--resilient --recover` to the 'Extra Flags' section.")
+                        .font(.caption)
+                } icon: {
+                    Image(systemName: "lightbulb")
+                }
+                .foregroundStyle(.orange)
+            }
         }
     }
 }

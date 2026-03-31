@@ -32,6 +32,7 @@ struct CirrusApp: App {
         _scheduleManager = State(initialValue: ScheduleManager(
             profileStore: profileStoreInstance,
             jobManager: jobManagerInstance,
+            logStore: logStoreInstance,
             configDirectoryURL: { settings.configDirectoryURL }
         ))
     }

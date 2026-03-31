@@ -3,15 +3,19 @@ import ServiceManagement
 
 struct SettingsTabView: View {
     @Environment(AppSettings.self) private var appSettings
+    @Environment(LogStore.self) private var logStore
+    @Environment(ProfileStore.self) private var profileStore
     @State private var loginItemEnabled = SMAppService.mainApp.status == .enabled
     @State private var isDownloading = false
     @State private var downloadError: String?
+    @State private var pruneResult: String?
 
     var body: some View {
         Form {
             rcloneSection
             storageSection
             generalSection
+            maintenanceSection
         }
         .formStyle(.grouped)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -100,6 +104,33 @@ struct SettingsTabView: View {
                     try? appSettings.update { $0.showWindowOnLaunch = newValue }
                 }
             ))
+        }
+    }
+
+    // MARK: - Maintenance Section
+
+    private var maintenanceSection: some View {
+        Section("Maintenance") {
+            HStack {
+                Button("Prune Expired Logs") {
+                    let countBefore = logStore.entries.count
+                    logStore.pruneExpiredLogs(profiles: profileStore.profiles)
+                    let removed = countBefore - logStore.entries.count
+                    pruneResult = removed > 0
+                        ? "Removed \(removed) expired log\(removed == 1 ? "" : "s")."
+                        : "No expired logs to remove."
+                }
+
+                if let result = pruneResult {
+                    Text(result)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Text("Removes logs that exceed the retention period set on each profile.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
     }
 

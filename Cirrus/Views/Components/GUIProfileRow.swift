@@ -16,22 +16,15 @@ struct GUIProfileRow: View {
                 .font(.title3)
 
             VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
+                Button {
+                    onSelectHistory()
+                } label: {
                     Text(profile.name)
                         .font(.title3.bold())
                         .foregroundStyle(.link)
-                        .onTapGesture { onSelectHistory() }
-
-                    Button {
-                        onEdit()
-                    } label: {
-                        Image(systemName: "square.and.pencil")
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Edit profile")
                 }
+                .buttonStyle(.plain)
+                .accessibilityHint("View sync history")
 
                 HStack(spacing: 4) {
                     Text(profile.action.displayDescription)
@@ -130,22 +123,32 @@ struct GUIProfileRow: View {
 
     @ViewBuilder
     private var actionButton: some View {
-        if jobStatus == .running {
+        HStack(spacing: 8) {
+            if jobStatus == .running {
+                Button {
+                    onCancel()
+                } label: {
+                    Label("Cancel", systemImage: "stop.circle.fill")
+                }
+                .buttonStyle(.bordered)
+                .tint(.red)
+            } else {
+                Button {
+                    onStart()
+                } label: {
+                    Label("Start", systemImage: "play.circle.fill")
+                }
+                .buttonStyle(.bordered)
+                .tint(.green)
+            }
+
             Button {
-                onCancel()
+                onEdit()
             } label: {
-                Label("Cancel", systemImage: "stop.circle.fill")
+                Label("Edit", systemImage: "square.and.pencil")
             }
             .buttonStyle(.bordered)
-            .tint(.red)
-        } else {
-            Button {
-                onStart()
-            } label: {
-                Label("Start", systemImage: "play.circle.fill")
-            }
-            .buttonStyle(.bordered)
-            .tint(.green)
+            .help("Edit profile")
         }
     }
 

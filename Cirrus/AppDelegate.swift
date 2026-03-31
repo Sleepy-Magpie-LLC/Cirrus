@@ -30,6 +30,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // If a sheet is open (e.g. editing a profile), bring the window to front instead of quitting
+        if let mainWindow = NSApp.windows.first(where: { $0.identifier?.rawValue == "main" }),
+           mainWindow.attachedSheet != nil {
+            closePopup()
+            NSApp.setActivationPolicy(.regular)
+            mainWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            startWindowObserver()
+            return .terminateCancel
+        }
         return confirmAndTerminate() ? .terminateNow : .terminateCancel
     }
 

@@ -35,6 +35,7 @@ struct Profile: Codable, Identifiable, Equatable {
     var extraFlags: String
     var schedule: CronSchedule?
     var groupName: String?
+    var logRetentionDays: Int?
     var sortOrder: Int
     var createdAt: Date
     var updatedAt: Date
@@ -48,6 +49,7 @@ struct Profile: Codable, Identifiable, Equatable {
         ignorePatterns: [String] = [],
         extraFlags: String = "",
         schedule: CronSchedule? = nil,
+        logRetentionDays: Int? = nil,
         groupName: String? = nil,
         sortOrder: Int = 0,
         createdAt: Date = Date(),
@@ -61,6 +63,7 @@ struct Profile: Codable, Identifiable, Equatable {
         self.ignorePatterns = ignorePatterns
         self.extraFlags = extraFlags
         self.schedule = schedule
+        self.logRetentionDays = logRetentionDays
         self.groupName = groupName
         self.sortOrder = sortOrder
         self.createdAt = createdAt
@@ -71,7 +74,7 @@ struct Profile: Codable, Identifiable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case id, name, source, destination, action, ignorePatterns, extraFlags
-        case schedule, groupName, sortOrder, createdAt, updatedAt
+        case schedule, logRetentionDays, groupName, sortOrder, createdAt, updatedAt
         // Legacy keys
         case sourcePath, remoteName, remotePath
     }
@@ -98,6 +101,7 @@ struct Profile: Codable, Identifiable, Equatable {
         ignorePatterns = try container.decodeIfPresent([String].self, forKey: .ignorePatterns) ?? []
         extraFlags = try container.decodeIfPresent(String.self, forKey: .extraFlags) ?? ""
         schedule = try container.decodeIfPresent(CronSchedule.self, forKey: .schedule)
+        logRetentionDays = try container.decodeIfPresent(Int.self, forKey: .logRetentionDays)
         groupName = try container.decodeIfPresent(String.self, forKey: .groupName)
         sortOrder = try container.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
@@ -114,6 +118,7 @@ struct Profile: Codable, Identifiable, Equatable {
         try container.encode(ignorePatterns, forKey: .ignorePatterns)
         try container.encode(extraFlags, forKey: .extraFlags)
         try container.encodeIfPresent(schedule, forKey: .schedule)
+        try container.encodeIfPresent(logRetentionDays, forKey: .logRetentionDays)
         try container.encodeIfPresent(groupName, forKey: .groupName)
         try container.encode(sortOrder, forKey: .sortOrder)
         try container.encode(createdAt, forKey: .createdAt)

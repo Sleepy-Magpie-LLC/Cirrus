@@ -112,6 +112,7 @@ final class JobManager {
         let profileId = snapshot.id
         // Use nonisolated(unsafe) isCancelled via unowned reference to avoid Sendable issue
         nonisolated(unsafe) let jobRunRef = jobRun
+        nonisolated(unsafe) let filterURLRef = filterURL
 
         process.terminationHandler = { [weak self] proc in
             let duration = Date().timeIntervalSince(startedAt)
@@ -139,7 +140,7 @@ final class JobManager {
 
                 logStoreRef.finalizeEntry(id: entryId, status: finalStatus, duration: duration)
 
-                if let filterURL = filterURL {
+                if let filterURL = filterURLRef {
                     FilterFileWriter.cleanup(at: filterURL)
                 }
 
