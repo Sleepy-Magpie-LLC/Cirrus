@@ -11,7 +11,8 @@ struct LogViewerSheet: View {
             Divider()
             contentView
         }
-        .task {
+        .task(id: entry.id) {
+            logContent = nil
             logContent = logStore.readLogFile(fileName: entry.logFileName)
         }
     }
@@ -75,6 +76,8 @@ struct LogViewerSheet: View {
                 }
                 .textSelection(.enabled)
             }
+            .background(.background.secondary)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ProgressView("Loading log...")

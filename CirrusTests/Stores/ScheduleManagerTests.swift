@@ -18,6 +18,7 @@ struct ScheduleManagerTests {
         let manager = ScheduleManager(
             profileStore: profileStore,
             jobManager: jobManager,
+            logStore: logStore,
             configDirectoryURL: { tempDir }
         )
         #expect(manager.lastFireDates.isEmpty)
@@ -31,6 +32,7 @@ struct ScheduleManagerTests {
         let manager = ScheduleManager(
             profileStore: profileStore,
             jobManager: jobManager,
+            logStore: logStore,
             configDirectoryURL: { tempDir }
         )
         let id = UUID()
@@ -47,6 +49,7 @@ struct ScheduleManagerTests {
         let manager = ScheduleManager(
             profileStore: profileStore,
             jobManager: jobManager,
+            logStore: logStore,
             configDirectoryURL: { tempDir }
         )
         manager.start()
@@ -62,6 +65,7 @@ struct ScheduleManagerTests {
         let manager = ScheduleManager(
             profileStore: profileStore,
             jobManager: jobManager,
+            logStore: logStore,
             configDirectoryURL: { tempDir }
         )
         manager.start()
