@@ -2,6 +2,8 @@
 
 A native macOS menu bar application for managing [rclone](https://rclone.org/) file synchronization jobs through reusable profiles. Replace your hand-written shell scripts with a GUI-driven workflow for configuring, executing, scheduling, and monitoring rclone operations across any supported remote.
 
+[Project page on sleepymagpie.com](https://sleepymagpie.com/tools/cirrus.html)
+
 ## Screenshots
 
 | Tray Popup | Profiles |

@@ -14,15 +14,64 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var profileStore: ProfileStore?
     var logStore: LogStore?
     var networkMonitor: NetworkMonitor?
+    var appSettings: AppSettings?
+    var scheduleManager: ScheduleManager?
     private let popupState = TrayPopupState()
     private var refreshTimer: Timer?
     private var statusTimer: Timer?
     private var showingSyncIndicator = false
+    private var didHandleLaunchWindow = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let environment = AppEnvironment.shared
+        appSettings = environment.appSettings
+        profileStore = environment.profileStore
+        logStore = environment.logStore
+        jobManager = environment.jobManager
+        networkMonitor = environment.networkMonitor
+        scheduleManager = environment.scheduleManager
+
         setupStatusItem()
         setupPopupPanel()
         startStatusTimer()
+        environment.scheduleManager.start()
+
+        // Login-item launches never instantiate the SwiftUI Window scene, so `mainWindowDidAppear`
+        // may never fire. Settle the launch window state here if it hasn't been handled already.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.didHandleLaunchWindow else { return }
+            self.didHandleLaunchWindow = true
+            if self.shouldShowWindowOnLaunch {
+                self.openMainWindow()
+            } else {
+                NSApp.setActivationPolicy(.accessory)
+            }
+        }
+    }
+
+    private var shouldShowWindowOnLaunch: Bool {
+        appSettings?.settings.showWindowOnLaunch ?? (profileStore?.profiles.isEmpty ?? true)
+    }
+
+    /// Called when the main window's content appears. On the first call this decides whether the
+    /// window stays open; afterwards it just restores regular activation for a reopened window.
+    func mainWindowDidAppear() {
+        profileStore?.reloadIfLoadFailed()
+
+        if !didHandleLaunchWindow {
+            didHandleLaunchWindow = true
+            if !shouldShowWindowOnLaunch {
+                // Close the window SwiftUI auto-created and drop back to menu-bar-only.
+                DispatchQueue.main.async {
+                    NSApp.windows.first { $0.identifier?.rawValue == "main" }?.close()
+                    NSApp.setActivationPolicy(.accessory)
+                }
+                return
+            }
+        }
+
+        NSApp.setActivationPolicy(.regular)
+        startWindowObserver()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -178,6 +227,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showPopup() {
         guard let button = statusItem.button else { return }
+        profileStore?.reloadIfLoadFailed()
         refreshPopupState()
         popupState.errorMessage = nil
         popupPanel.show(relativeTo: button)

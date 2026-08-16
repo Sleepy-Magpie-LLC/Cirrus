@@ -31,7 +31,7 @@ Native macOS menu bar app (Swift 6, SwiftUI, macOS 14+). Wraps the rclone CLI, a
 
 ### State Management
 
-Five `@MainActor @Observable` managers created in `CirrusApp.init()` and injected via `@Environment`:
+Five `@MainActor @Observable` managers created and loaded by `AppEnvironment.shared`, then injected via `@Environment`:
 
 | Manager | Role |
 |---------|------|
@@ -42,6 +42,8 @@ Five `@MainActor @Observable` managers created in `CirrusApp.init()` and injecte
 | `ScheduleManager` | 5-second cron evaluation loop, daily log pruning |
 
 Dependencies use closure-based injection (`@escaping () -> URL`) for deferred evaluation, since managers are created before config is fully loaded.
+
+Launch work (store wiring into `AppDelegate`, `ScheduleManager.start()`, window visibility) happens in `applicationDidFinishLaunching`, never in a view's `onAppear`: the app is `LSUIElement`, so a login-item launch may never instantiate the `Window` scene.
 
 ### Job Execution
 

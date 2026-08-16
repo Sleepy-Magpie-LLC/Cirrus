@@ -16,21 +16,29 @@ final class ProfileStore {
         configDirectoryURL().appendingPathComponent("profiles")
     }
 
+    /// `true` when the last load couldn't read the profiles directory. Distinguishes a real
+    /// empty state from an unreadable one so the UI doesn't silently show "no profiles".
+    private(set) var loadFailed = false
+
     func loadAll() {
         let fileManager = FileManager.default
         let dir = profilesDirectory
 
         guard fileManager.fileExists(atPath: dir.path) else {
+            Self.logger.warning("Profiles directory missing at \(dir.path)")
             profiles = []
+            loadFailed = true
             return
         }
 
         var loaded: [Profile] = []
-        guard let urls = try? fileManager.contentsOfDirectory(
-            at: dir,
-            includingPropertiesForKeys: nil
-        ) else {
+        let urls: [URL]
+        do {
+            urls = try fileManager.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+        } catch {
+            Self.logger.error("Failed to read profiles directory: \(error.localizedDescription)")
             profiles = []
+            loadFailed = true
             return
         }
 
@@ -45,6 +53,14 @@ final class ProfileStore {
         }
 
         profiles = loaded.sorted { $0.sortOrder < $1.sortOrder }
+        loadFailed = false
+    }
+
+    /// Retries a load that previously failed, so a transient error at launch doesn't leave the
+    /// app showing an empty profile list until it's restarted.
+    func reloadIfLoadFailed() {
+        guard loadFailed else { return }
+        loadAll()
     }
 
     func save(_ profile: Profile) throws {

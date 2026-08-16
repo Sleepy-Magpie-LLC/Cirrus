@@ -222,4 +222,74 @@ struct ProfileStoreTests {
         try store.save(profile)
         #expect(store.profiles[0].updatedAt > earlyDate)
     }
+
+    @Test @MainActor func loadAllWithEmptyDirectoryDoesNotFlagFailure() {
+        let configDir = makeTempConfigDir()
+        defer { cleanup(configDir) }
+
+        let store = ProfileStore(configDirectoryURL: { configDir })
+        store.loadAll()
+
+        #expect(store.loadFailed == false)
+    }
+
+    @Test @MainActor func loadAllFlagsFailureWhenDirectoryMissing() {
+        let configDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cirrus-missing-\(UUID().uuidString)")
+
+        let store = ProfileStore(configDirectoryURL: { configDir })
+        store.loadAll()
+
+        #expect(store.profiles.isEmpty)
+        #expect(store.loadFailed)
+    }
+
+    @Test @MainActor func reloadIfLoadFailedRecoversOnceDirectoryExists() throws {
+        let configDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cirrus-late-\(UUID().uuidString)")
+        defer { cleanup(configDir) }
+
+        let store = ProfileStore(configDirectoryURL: { configDir })
+        store.loadAll()
+        #expect(store.loadFailed)
+
+        // The directory becomes readable after the initial load, as it would if the
+        // config directory wasn't available when the app launched.
+        let profilesDir = configDir.appendingPathComponent("profiles")
+        try FileManager.default.createDirectory(at: profilesDir, withIntermediateDirectories: true)
+        let profile = Profile(
+            name: "Late",
+            source: Endpoint(remoteName: "", path: "/tmp"),
+            destination: Endpoint(remoteName: "r", path: "/")
+        )
+        let data = try JSONEncoder.cirrus.encode(profile)
+        try data.write(to: profilesDir.appendingPathComponent("\(profile.id.uuidString.lowercased()).json"))
+
+        store.reloadIfLoadFailed()
+
+        #expect(store.loadFailed == false)
+        #expect(store.profiles.count == 1)
+        #expect(store.profiles[0].name == "Late")
+    }
+
+    @Test @MainActor func reloadIfLoadFailedIsNoOpAfterSuccessfulLoad() throws {
+        let configDir = makeTempConfigDir()
+        defer { cleanup(configDir) }
+
+        let store = ProfileStore(configDirectoryURL: { configDir })
+        let profile = Profile(
+            name: "Kept",
+            source: Endpoint(remoteName: "", path: "/tmp"),
+            destination: Endpoint(remoteName: "r", path: "/")
+        )
+        try store.save(profile)
+        store.loadAll()
+        #expect(store.loadFailed == false)
+
+        // Deleting the directory must not empty the in-memory list, since the last load succeeded.
+        cleanup(configDir)
+        store.reloadIfLoadFailed()
+
+        #expect(store.profiles.count == 1)
+    }
 }
